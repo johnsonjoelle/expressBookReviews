@@ -74,7 +74,6 @@ public_users.get('/isbn/:isbn',function (req, res) {
 // Get book details based on author
 // public_users.get('/author/:author',function (req, res) {
 //   let author = req.params.author;
-//   author = author.replace(/_/g, " "); // Replace underscores with space
 //   let matchingBooks = {};
 //   // Loop through books to account for authors with multiple books
 //   Object.entries(books).map(entry => {
@@ -99,7 +98,6 @@ public_users.get('/isbn/:isbn',function (req, res) {
 public_users.get('/author/:author',function (req, res) {
   let author = req.params.author;
   if (author) {
-    author = author.replace(/_/g, " "); // Replace underscores with space
     let matchingBooks = {};
     // Use map method to inlcude ISBN number with retrieved books
     getBooks().then((bks) => Object.entries(bks).map(entry => {
@@ -126,26 +124,54 @@ public_users.get('/author/:author',function (req, res) {
 });
 
 // Get all books based on title
+// public_users.get('/title/:title',function (req, res) {
+//   let title = req.params.title;
+//   let matchingBooks = {};
+//   // Loop through books to account for chance of multiple books with the same title
+//   Object.entries(books).map(entry => {
+//     let isbn = entry[0];
+//     let info = entry[1];
+//     if (info.title === title) {
+//         matchingBooks[isbn] = {
+//             author: info.author,
+//             title: info.title,
+//             reviews: info.reviews
+//         }
+//     }
+//   });
+//   if (JSON.stringify(matchingBooks) !== '{}') {
+//     res.send(matchingBooks);
+//   } else {
+//     res.send("Unable to find a book with that title");
+//   }
+// });
+
+// Get book details based on Title Async
 public_users.get('/title/:title',function (req, res) {
   let title = req.params.title;
-  title = title.replace(/_/g, " "); // Replace underscores with space
-  let matchingBooks = {};
-  // Loop through books to account for chance of multiple books with the same title
-  Object.entries(books).map(entry => {
-    let isbn = entry[0];
-    let info = entry[1];
+  if (author) {
+    let matchingBooks = {};
+    // Use map method to inlcude ISBN number with retrieved books
+    getBooks().then((bks) => Object.entries(bks).map(entry => {
+    const isbn = entry[0];
+    const info = entry[1];
     if (info.title === title) {
         matchingBooks[isbn] = {
-            author: info.author,
-            title: info.title,
-            reviews: info.reviews
+        author: author,
+        title: info.title,
+        reviews: info.reviews
         }
     }
-  });
-  if (JSON.stringify(matchingBooks) !== '{}') {
-    res.send(matchingBooks);
+    }))
+    .then(mBks => {
+    if (JSON.stringify(matchingBooks) !== '{}') {
+        res.send(matchingBooks);
+    } else {
+        res.send("Unable to find a book with that title");
+    }
+    });
   } else {
-    res.send("Unable to find author");
+    res.status(402).json({message: "Title required"});
   }
 });
 
