@@ -1,4 +1,5 @@
 const express = require('express');
+const axios = require('axios').default;
 let books = require("./booksdb.js");
 let isValid = require("./auth_users.js").isValid;
 let users = require("./auth_users.js").users;
@@ -20,37 +21,107 @@ public_users.post("/register", (req,res) => {
 });
 
 // Get the book list available in the shop
-public_users.get('/',function (req, res) {
-  res.send(JSON.stringify(books, null, 4));
+// public_users.get('/',function (req, res) {
+//   res.send(JSON.stringify(books, null, 4));
+// });
+
+// Shared Async Function
+const getBooks = () => {
+  return new Promise((resolve, reject) => {
+    resolve(books);
+  });
+}
+// Get the book list asynchronously
+public_users.get('/', (req, res) => {
+  getBooks().then(data => {
+    res.send(JSON.stringify(data, null, 4));
+  })
+  .catch(err => {
+    res.status(500).json({message: "Error fetching book list", err});
+  });
 });
 
 // Get book details based on ISBN
+// public_users.get('/isbn/:isbn',function (req, res) {
+//   const isbn = req.params.isbn;
+//   res.send(books[isbn]);
+// });
+
+// Get book details based on ISBN Async
+const getBookByISBN = (isbn) => {
+    return new Promise((resolve, reject) => {
+        if (books[isbn]) {
+            resolve(books[isbn]);
+        } else {
+            reject({status: 404, message: "ISBN not found"});
+        }
+    })
+}
 public_users.get('/isbn/:isbn',function (req, res) {
   const isbn = req.params.isbn;
-  res.send(books[isbn]);
- });
+  if (isbn) {
+    getBookByISBN(isbn).then(data => {
+        res.send(data);
+    })
+    .catch(err => {
+        res.status(err.status).json(err.message);
+    });
+  } else {
+    res.status(400).json({message: "ISBN required"});
+  }
+});
   
 // Get book details based on author
+// public_users.get('/author/:author',function (req, res) {
+//   let author = req.params.author;
+//   author = author.replace(/_/g, " "); // Replace underscores with space
+//   let matchingBooks = {};
+//   // Loop through books to account for authors with multiple books
+//   Object.entries(books).map(entry => {
+//     let isbn = entry[0];
+//     let info = entry[1];
+//     if (info.author === author) {
+//         matchingBooks[isbn] = {
+//             author: author,
+//             title: info.title,
+//             reviews: info.reviews
+//         }
+//     }
+//   });
+//   if (JSON.stringify(matchingBooks) !== '{}') {
+//     res.send(matchingBooks);
+//   } else {
+//     res.send("Unable to find author");
+//   }
+// });
+
+// Get book details based on Author Async
 public_users.get('/author/:author',function (req, res) {
   let author = req.params.author;
-  author = author.replace(/_/g, " "); // Replace underscores with space
-  let matchingBooks = {};
-  // Loop through books to account for authors with multiple books
-  Object.entries(books).map(entry => {
-    let isbn = entry[0];
-    let info = entry[1];
-    if (info.author === author) {
+  if (author) {
+    author = author.replace(/_/g, " "); // Replace underscores with space
+    let matchingBooks = {};
+    // Use map method to inlcude ISBN number with retrieved books
+    getBooks().then((bks) => Object.entries(bks).map(entry => {
+      const isbn = entry[0];
+      const info = entry[1];
+      if (info.author === author) {
         matchingBooks[isbn] = {
-            author: author,
-            title: info.title,
-            reviews: info.reviews
+          author: author,
+          title: info.title,
+          reviews: info.reviews
         }
-    }
-  });
-  if (JSON.stringify(matchingBooks) !== '{}') {
-    res.send(matchingBooks);
+      }
+    }))
+    .then(mBks => {
+      if (JSON.stringify(matchingBooks) !== '{}') {
+        res.send(matchingBooks);
+      } else {
+        res.send("Unable to find author");
+      }
+    });
   } else {
-    res.send("Unable to find author");
+    res.status(402).json({message: "Author required"});
   }
 });
 
